@@ -6,9 +6,13 @@ import logging
 from networkx.algorithms.flow import shortest_augmenting_path
 from sklearn import datasets
 from sklearn.base import BaseEstimator, ClusterMixin
-from InfoClustering.data_structure import DisjointSetForest
+#from .data_structure import DisjointSetForest
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
-from ibfs_python3 import ibfs_ext
+import os
+from ctypes import *
+curr_path = os.path.dirname(os.path.abspath(os.path.expanduser(__file__)))
+lib1 = cdll.LoadLibrary(os.path.join(curr_path, 'ibfs_python3/libboost_python35.so.1.67.0'))
+from .ibfs_python3 import ibfs_ext
 
 import warnings
 
@@ -271,7 +275,7 @@ def info_clustering(G, n_cluster=3, verbose=False):
     psp = original_psp
         
     # construct the dendrogram matrix based on the Principle Sequence Partition
-    DSF = DisjointSetForest(N+1)
+    #DSF = DisjointSetForest(N+1)
     linkage_matrix = np.zeros((N - 1, 4))
     i = 0
     sorted_psp = sorted(psp, key=len, reverse=True)

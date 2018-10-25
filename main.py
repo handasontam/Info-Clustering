@@ -1,7 +1,7 @@
 import argparse
 import networkx as nx
-from data_preprocess import get_graph_from_data
-from infoclustering import InfoClustering
+from infoclustering.data_preprocess import get_graph_from_data
+from infoclustering.infoclustering import InfoClustering
  
  
 def run(core, data_path, label_path, weighted, verbose=1):
@@ -20,13 +20,6 @@ def run(core, data_path, label_path, weighted, verbose=1):
     IC.fit(G)
     print(IC.psp)
     print(IC.gammas)
-    import pickle
-
-    with open('./'+data_path+'_infoclustering.solutions', 'wb') as f:
-        pickle.dump(IC.psp, f)
-    # print(IC.linkage_matrix)
-     
- 
  
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Info-Clustering')
