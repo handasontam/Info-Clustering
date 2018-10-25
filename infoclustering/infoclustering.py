@@ -4,7 +4,6 @@ import numpy as np
 from itertools import combinations, chain
 import logging
 from networkx.algorithms.flow import shortest_augmenting_path
-from sklearn import datasets
 from sklearn.base import BaseEstimator, ClusterMixin
 #from .data_structure import DisjointSetForest
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
@@ -220,7 +219,7 @@ def update_PStar(self, BStar):
     self.P.add(Fset(to_add))
 
 
-def info_clustering(G, n_cluster=3, verbose=False):
+def info_clustering(G, verbose=False):
     """Apply Info-Clustering on a adjacency matrix:
 
     Parameters
@@ -253,6 +252,7 @@ def info_clustering(G, n_cluster=3, verbose=False):
         if u > v:
             # only preserve edge from small index to bigger index
             G.remove_edge(u, v)
+            G.add_edges_from([(u, v, {'weight': 0})])  # otherwise, ibfs will trigger segmentation fault
     N = G.number_of_nodes()
 
     # start with the trivial partition and the singleton partition
@@ -262,6 +262,7 @@ def info_clustering(G, n_cluster=3, verbose=False):
               psp=set(), 
               gamma=set(), 
               verbose=verbose)
+
     original_psp = []
     for partition in psp:
         original_partition = []
@@ -304,8 +305,15 @@ def info_clustering(G, n_cluster=3, verbose=False):
     #     print(linkage_matrix)
     #     dendrogram(linkage_matrix)
     #     print('linkage matrix constructed success')
+    gammas = list(gammas)
+    gammas.append(-np.inf)
+    gammas.append(np.inf)
+    gammas = sorted(gammas)
+    solutions = {}
+    for gamma_1, gamma_2, cluster in zip(gammas[:-1], gammas[1:], sorted(psp, key=lambda x: len(x))):
+        solutions[(gamma_1, gamma_2)] = cluster
     
-    return linkage_matrix, psp, in_cuts, gammas
+    return linkage_matrix, solutions
 
 class InfoClustering(BaseEstimator, ClusterMixin):
     """
@@ -313,21 +321,6 @@ class InfoClustering(BaseEstimator, ClusterMixin):
     
     Parameters
     -----------
-    min_cluster_size: integer, optional
-        The minimum cluster size for the max_threshold method
-
-    n_clusters : integer, optional
-        The dimension of the projection subspace.
-
-    affinity : string, array-like or callable, default 'rbf'
-        If a string, this may be one of 'gc', 'nearest_neighbors', 'precomputed',
-        'rbf' or one of the kernels supported by
-        `sklearn.metrics.pairwise_kernels`.
-
-        Only kernels that produce similarity scores (non-negative values that
-        increase with similarity) should be used. This property is not checked
-        by the clustering algorithm.
-
     n_jobs : int, optional (default = 1)
         The number of parallel jobs to run.
         If ``-1``, then the number of jobs is set to the number of CPU cores.
@@ -345,16 +338,13 @@ class InfoClustering(BaseEstimator, ClusterMixin):
         Labels of each point
     """
 
-    def __init__(self, n_clusters=8,
-                 n_init=10, n_jobs=1, verbose=False):
-        self.n_clusters = n_clusters
-        self.n_init = n_init
+    def __init__(self, G, n_jobs=1, verbose=False):
+        self.G = G
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-    def fit(self, G):
-        self.linkage_matrix, self.psp, self.in_cuts, self.gammas = info_clustering(G=G, 
-                                                n_cluster=self.n_clusters, 
+    def fit(self):
+        self.linkage_matrix, self.solutions = info_clustering(G=self.G, 
                                                 verbose=self.verbose)
         if self.verbose:
             dendrogram(self.linkage_matrix)
